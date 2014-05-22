@@ -46,6 +46,7 @@ namespace TvService
     private readonly List<IUser> _users;
 
     private readonly List<IUser> _usersOld;
+
     //holding a list of all the timeshifting users that have been stopped - mkaing it possible for the client to query the possible stop reason.
 
     private IUser _owner;
@@ -65,6 +66,7 @@ namespace TvService
       _timer.Interval = 60000;
       _timer.Enabled = true;
       _timer.Elapsed += _timer_Elapsed;
+
     }
 
     #endregion
@@ -151,6 +153,57 @@ namespace TvService
       else
       {
         _users.Add(user);
+      }
+    }
+
+    /// <summary>
+    /// GetTimeshiftPosition for placeshift
+    /// </summary>
+    /// <param name="user"></param>
+    /// <returns></returns>
+    public double GetTimeshiftPosition(IUser user)
+    {
+      for (int i = 0; i < _users.Count; i++)
+      {
+        if (_users[i].Name == user.Name)
+        {
+          return _users[i].TimeshiftPosition;
+        }
+      }
+      return 0;
+    }
+
+    /// <summary>
+    /// SetTimeshiftPosition for placeshift
+    /// </summary>
+    /// <param name="user"></param>
+    /// <param name="TimeshiftPosition"></param>
+    public void SetTimeshiftPosition(IUser user, double TimeshiftPosition)
+    {
+      for (int i = 0; i < _users.Count; i++)
+      {
+        if (_users[i].Name == user.Name)
+        {
+          _users[i].TimeshiftPosition = TimeshiftPosition;
+          break;
+        }
+      }
+    }
+
+    /// <summary>
+    /// Replace user name
+    /// </summary>
+    /// <param name="olduser"></param>
+    /// <param name="newuser"></param>
+    public void Replace(string olduser, IUser newuser)
+    {
+      for (int i = 0; i < _users.Count; i++)
+      {
+        if (_users[i].Name == olduser)
+        {
+          _users[i].Name = newuser.Name;
+          break;
+        }
       }
     }
 
