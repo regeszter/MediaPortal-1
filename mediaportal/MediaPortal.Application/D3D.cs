@@ -623,6 +623,7 @@ namespace MediaPortal
 
         // restart window manager
         GUIWindowManager.PreInit();
+        GUIWindowManager.OnResize();
         GUIWindowManager.ActivateWindow(activeWin);
         GUIWindowManager.OnDeviceRestored();
 
@@ -2088,7 +2089,7 @@ namespace MediaPortal
             Thread.Sleep(20);
           } while (!SplashScreen.IsStopped());
           SplashScreen = null;
-          
+          MediaPortalApp.ShowStartupWarningDialogs();
         }
 
         if (MinimizeOnStartup && _firstTimeWindowDisplayed)
