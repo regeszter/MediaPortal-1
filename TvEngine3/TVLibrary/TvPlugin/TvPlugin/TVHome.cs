@@ -98,6 +98,7 @@ namespace TvPlugin
 
     public static VirtualCard vPlaceshiftCard = null;
     public static bool inPlaceShift = false;
+    private static readonly SynchronizationContext _mainThreadContext = SynchronizationContext.Current;
     private Channel _resumeChannel = null;
     private Thread heartBeatTransmitterThread = null;
     private static DateTime _updateProgressTimer = DateTime.MinValue;
@@ -1732,7 +1733,10 @@ namespace TvPlugin
 
       if (!_playbackStopped)
       {
+        _mainThreadContext.Send(delegate
+        {
         g_Player.ShowFullScreenWindow();
+        }, null);
       }
     }
 
