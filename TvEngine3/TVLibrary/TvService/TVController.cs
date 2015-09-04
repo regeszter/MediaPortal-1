@@ -3960,7 +3960,7 @@ namespace TvService
                 DateTime now = DateTime.Now;
                 TimeSpan ts = tmpUser.HeartBeat - now;
 
-                if (tmpUser.Name.Contains("Placeshift Virtual User"))
+                if (tmpUser.Name.Contains("Placeshift Virtual User") || tmpUser.Name == "aMPdroid")
                 {
 
                   if (ts.TotalSeconds < (-1 * VirtualUserIdleTime * 60))
