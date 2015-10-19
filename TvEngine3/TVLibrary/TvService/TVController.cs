@@ -3934,62 +3934,65 @@ namespace TvService
 
     private void HeartBeatMonitor()
     {
+      int VirtualUserIdleTime = 5;
       try
       {
-        int VirtualUserIdleTime = Convert.ToInt32(_layer.GetSetting("VirtualUserIdleTime", "5").Value);
-
-        Log.Info("Controller: Heartbeat Monitor initiated, max timeout allowed for normal user is {0} sec, for Virtual user is {1} mins.",
-                 HEARTBEAT_MAX_SECS_EXCEED_ALLOWED, VirtualUserIdleTime);
-
-        while (true)
-        {
-          Dictionary<int, ITvCardHandler>.Enumerator enumerator = _cards.GetEnumerator();
-
-          //for each card
-          while (enumerator.MoveNext())
-          {
-            KeyValuePair<int, ITvCardHandler> keyPair = enumerator.Current;
-            //get a list of all users for this card
-            IUser[] users = keyPair.Value.Users.GetUsers();
-            if (users != null)
-            {
-              //for each user
-              for (int i = 0; i < users.Length; ++i)
-              {
-                IUser tmpUser = users[i];
-                if (tmpUser.HeartBeat > DateTime.MinValue)
-                {
-                  DateTime now = DateTime.Now;
-                  TimeSpan ts = tmpUser.HeartBeat - now;
-
-                  if (tmpUser.Name.Contains("Placeshift Virtual User") || tmpUser.Name == "aMPdroid")
-                  {
-
-                    if (ts.TotalSeconds < (-1 * VirtualUserIdleTime * 60))
-                    {
-                      Log.Write("Controller: Heartbeat Monitor - kicking the {0}", tmpUser.Name);
-                      StopTimeShifting(ref tmpUser, TvStoppedReason.HeartBeatTimeOut);
-                    }
-                  }
-                  // more than 30 seconds have elapsed since last heartbeat was received. lets kick the client
-                  else if (ts.TotalSeconds < (-1 * HEARTBEAT_MAX_SECS_EXCEED_ALLOWED))
-                  {
-                    Log.Write("Controller: Heartbeat Monitor - kicking idle user {0}", tmpUser.Name);
-                    StopTimeShifting(ref tmpUser, TvStoppedReason.HeartBeatTimeOut);
-                  }
-                }
-              }
-            }
-          }
-          // note; client signals heartbeats each 15 sec.
-          Thread.Sleep(HEARTBEAT_MAX_SECS_EXCEED_ALLOWED * 1000); //sleep for 30 secs. before checking heartbeat again
-          //throw new Exception("heartbeat died on purpose, causing an unhandled exception");
-        }
+        VirtualUserIdleTime = Convert.ToInt32(_layer.GetSetting("VirtualUserIdleTime", "5").Value);
       }
       catch (Exception ex)
       {
         Log.Error("Controller HeartBeatMonitor error: {0}", ex.Message);
+        Thread.Sleep(1000); //Waiting for MySQL after resume
       }
+
+      Log.Info("Controller: Heartbeat Monitor initiated, max timeout allowed for normal user is {0} sec, for Virtual user is {1} mins.",
+                HEARTBEAT_MAX_SECS_EXCEED_ALLOWED, VirtualUserIdleTime);
+
+      while (true)
+      {
+        Dictionary<int, ITvCardHandler>.Enumerator enumerator = _cards.GetEnumerator();
+
+        //for each card
+        while (enumerator.MoveNext())
+        {
+          KeyValuePair<int, ITvCardHandler> keyPair = enumerator.Current;
+          //get a list of all users for this card
+          IUser[] users = keyPair.Value.Users.GetUsers();
+          if (users != null)
+          {
+            //for each user
+            for (int i = 0; i < users.Length; ++i)
+            {
+              IUser tmpUser = users[i];
+              if (tmpUser.HeartBeat > DateTime.MinValue)
+              {
+                DateTime now = DateTime.Now;
+                TimeSpan ts = tmpUser.HeartBeat - now;
+
+                if (tmpUser.Name.Contains("Placeshift Virtual User") || tmpUser.Name == "aMPdroid")
+                {
+
+                  if (ts.TotalSeconds < (-1 * VirtualUserIdleTime * 60))
+                  {
+                    Log.Write("Controller: Heartbeat Monitor - kicking the {0}", tmpUser.Name);
+                    StopTimeShifting(ref tmpUser, TvStoppedReason.HeartBeatTimeOut);
+                  }
+                }
+                // more than 30 seconds have elapsed since last heartbeat was received. lets kick the client
+                else if (ts.TotalSeconds < (-1 * HEARTBEAT_MAX_SECS_EXCEED_ALLOWED))
+                {
+                  Log.Write("Controller: Heartbeat Monitor - kicking idle user {0}", tmpUser.Name);
+                  StopTimeShifting(ref tmpUser, TvStoppedReason.HeartBeatTimeOut);
+                }
+              }
+            }
+          }
+        }
+        // note; client signals heartbeats each 15 sec.
+        Thread.Sleep(HEARTBEAT_MAX_SECS_EXCEED_ALLOWED * 1000); //sleep for 30 secs. before checking heartbeat again
+        //throw new Exception("heartbeat died on purpose, causing an unhandled exception");
+      }
+
     }
 
     /// <summary>
