@@ -3934,16 +3934,7 @@ namespace TvService
 
     private void HeartBeatMonitor()
     {
-      int VirtualUserIdleTime = 5;
-      try
-      {
-        VirtualUserIdleTime = Convert.ToInt32(_layer.GetSetting("VirtualUserIdleTime", "5").Value);
-      }
-      catch (Exception ex)
-      {
-        Log.Error("Controller HeartBeatMonitor error: {0}", ex.Message);
-        Thread.Sleep(1000); //Waiting for MySQL after resume
-      }
+      int VirtualUserIdleTime = Convert.ToInt32(_layer.GetSetting("VirtualUserIdleTime", "5").Value);
 
       Log.Info("Controller: Heartbeat Monitor initiated, max timeout allowed for normal user is {0} sec, for Virtual user is {1} mins.",
                 HEARTBEAT_MAX_SECS_EXCEED_ALLOWED, VirtualUserIdleTime);
