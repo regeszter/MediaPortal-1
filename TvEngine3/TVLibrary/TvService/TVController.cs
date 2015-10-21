@@ -4451,11 +4451,37 @@ namespace TvService
 
     private bool _onResumeDone = false;
 
+    private bool IsDatabaseBackendReady()
+    {
+      int timeout = 0;
+      while (timeout < 30)
+      {
+        int count = 0;
+        try
+        {
+          count = Server.ListAll().Count();
+          Log.Debug("IsDatabaseBackendReady: true");
+          return true;
+        }
+       catch
+        {
+          Log.Error("IsDatabaseBackendReady: false {0}", timeout);
+        }
+
+        Thread.Sleep(1000);
+        timeout++;
+      }
+      return false;
+    }
+
     public void OnResume()
     {
       if (!_onResumeDone)
       {
         Log.Info("TvController.OnResume()");
+
+        IsDatabaseBackendReady();
+
         SetupHeartbeatThread();
 
         if (_scheduler != null)
