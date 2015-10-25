@@ -4458,7 +4458,7 @@ namespace TvService
       {
         try
         {
-          int temp = Int32.Parse(_layer.GetSetting("timeshiftMaxFreeCardsToTry", "0").Value);
+          int temp = Int32.Parse(_layer.GetSetting("timeshiftMaxFreeCardsToTry", "0").Value); // just for check if the database is ready
           Log.Debug("IsDatabaseBackendReady: true");
           return true;
         }
