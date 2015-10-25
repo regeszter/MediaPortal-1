@@ -4456,10 +4456,9 @@ namespace TvService
       int timeout = 0;
       while (timeout < 30)
       {
-        int count = 0;
         try
         {
-          count = Server.ListAll().Count();
+          int temp = Int32.Parse(_layer.GetSetting("timeshiftMaxFreeCardsToTry", "0").Value);
           Log.Debug("IsDatabaseBackendReady: true");
           return true;
         }
