@@ -1000,8 +1000,10 @@ namespace TvPlugin
       if (TVHome.Navigator.Groups.Count > 1 && !_singleChannelView)
       {
         int prevGroup = TVHome.Navigator.CurrentGroup.IdGroup;
-
-        TVHome.OnSelectGroup();
+        if (!TVHome.OnUnlockChannelGroup())
+        {
+          TVHome.OnSelectGroup();
+        }
 
         if (prevGroup != TVHome.Navigator.CurrentGroup.IdGroup)
         {
@@ -3497,7 +3499,7 @@ namespace TvPlugin
             OnGetIMDBInfo();
             break;
           case 971: //group
-            OnSelectChannelGroup();
+          OnSelectChannelGroup();
             break;
           case 1040: // set reminder
           case 1212: // cancel reminder

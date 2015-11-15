@@ -295,8 +295,11 @@ namespace TvPlugin
             }
             else if (message.SenderControlId == 36) // spincontrol
             {
-              // switch group              
-              OnGroupChanged();
+              // switch group    
+              if (!TVHome.OnUnlockChannelGroup())
+              {
+                OnGroupChanged();
+              }
             }
             else if (message.SenderControlId == 34) // exit button
             {
@@ -316,6 +319,7 @@ namespace TvPlugin
     /// <param name="action"></param>
     public override void OnAction(Action action)
     {
+      TVHome _tvHome = new TVHome();
       switch (action.wID)
       {
         case Action.ActionType.ACTION_CONTEXT_MENU:
@@ -330,12 +334,26 @@ namespace TvPlugin
         case Action.ActionType.ACTION_MOVE_LEFT:
         case Action.ActionType.ACTION_TVGUIDE_PREV_GROUP:
           // switch group
-          spinGroup.MoveUp();
+          if (TVHome.OnUnlockChannelGroup())
+          {
+            _tvHome.OnSelectChannel();
+          }
+          else
+          {
+            spinGroup.MoveUp();
+          }
           return;
         case Action.ActionType.ACTION_MOVE_RIGHT:
         case Action.ActionType.ACTION_TVGUIDE_NEXT_GROUP:
           // switch group
-          spinGroup.MoveDown();
+          if (TVHome.OnUnlockChannelGroup())
+          {
+            _tvHome.OnSelectChannel();
+          }
+          else
+          {
+            spinGroup.MoveDown();
+          }
           return;
       }
       base.OnAction(action);
@@ -434,6 +452,7 @@ namespace TvPlugin
         // set selected
         if (current.GroupName.CompareTo(TVHome.Navigator.CurrentGroup.GroupName) == 0)
         {
+          Log.Debug("TvMiniGuide: the current group is {0}", current.GroupName);
           spinGroup.Value = i;
         }
       }
