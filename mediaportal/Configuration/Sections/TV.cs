@@ -318,6 +318,7 @@ namespace MediaPortal.Configuration.Sections
       this.labelShowEpisodeinfo = new MediaPortal.UserInterface.Controls.MPLabel();
       this.comboboxShowEpisodeInfo = new MediaPortal.UserInterface.Controls.MPComboBox();
       this.mpGroupBox5 = new MediaPortal.UserInterface.Controls.MPGroupBox();
+      this.cbPinProtectedChannels = new System.Windows.Forms.CheckBox();
       this.cbHideAllChannels = new MediaPortal.UserInterface.Controls.MPCheckBox();
       this.tabPageAudioLanguages = new MediaPortal.UserInterface.Controls.MPTabPage();
       this.groupBox2 = new MediaPortal.UserInterface.Controls.MPGroupBox();
@@ -362,7 +363,6 @@ namespace MediaPortal.Configuration.Sections
       this.checkBoxNotifyPlaySound = new MediaPortal.UserInterface.Controls.MPCheckBox();
       this.mpLabel2 = new MediaPortal.UserInterface.Controls.MPLabel();
       this.txtNotifyBefore = new MediaPortal.UserInterface.Controls.MPTextBox();
-      this.cbPinProtectedChannels = new System.Windows.Forms.CheckBox();
       this.mpGroupBox1.SuspendLayout();
       this.tabControlTVGeneral.SuspendLayout();
       this.tabPageGeneralSettings.SuspendLayout();
@@ -698,6 +698,17 @@ namespace MediaPortal.Configuration.Sections
       this.mpGroupBox5.TabIndex = 11;
       this.mpGroupBox5.TabStop = false;
       this.mpGroupBox5.Text = "Group options";
+      // 
+      // cbPinProtectedChannels
+      // 
+      this.cbPinProtectedChannels.AutoSize = true;
+      this.cbPinProtectedChannels.Location = new System.Drawing.Point(242, 19);
+      this.cbPinProtectedChannels.Name = "cbPinProtectedChannels";
+      this.cbPinProtectedChannels.Size = new System.Drawing.Size(152, 17);
+      this.cbPinProtectedChannels.TabIndex = 1;
+      this.cbPinProtectedChannels.Text = "Hide Pin Protected Groups";
+      this.cbPinProtectedChannels.UseVisualStyleBackColor = true;
+      this.cbPinProtectedChannels.CheckedChanged += new System.EventHandler(this.cbPinProtectedChannels_CheckedChanged);
       // 
       // cbHideAllChannels
       // 
@@ -1189,16 +1200,6 @@ namespace MediaPortal.Configuration.Sections
       this.txtNotifyBefore.TabIndex = 7;
       this.txtNotifyBefore.Text = "300";
       // 
-      // cbPinProtectedChannels
-      // 
-      this.cbPinProtectedChannels.AutoSize = true;
-      this.cbPinProtectedChannels.Location = new System.Drawing.Point(242, 19);
-      this.cbPinProtectedChannels.Name = "cbPinProtectedChannels";
-      this.cbPinProtectedChannels.Size = new System.Drawing.Size(152, 17);
-      this.cbPinProtectedChannels.TabIndex = 1;
-      this.cbPinProtectedChannels.Text = "Hide Pin Protected Groups";
-      this.cbPinProtectedChannels.UseVisualStyleBackColor = true;
-      // 
       // TV
       // 
       this.Controls.Add(this.tabControlTVGeneral);
@@ -1376,5 +1377,18 @@ namespace MediaPortal.Configuration.Sections
     }
 
     #endregion
+
+    private void cbPinProtectedChannels_CheckedChanged(object sender, EventArgs e)
+    {
+      if (cbPinProtectedChannels.Checked)
+      {
+        cbHideAllChannels.Checked = true;
+        cbHideAllChannels.Enabled = false;
+      }
+      else
+      {
+        cbHideAllChannels.Enabled = true;
+      }
+    }
   }
 }

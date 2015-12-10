@@ -34,6 +34,7 @@ using MediaPortal.Profile;
 using MediaPortal.Util;
 using TvControl;
 using TvDatabase;
+using TvLibrary.Interfaces;
 using Action = MediaPortal.GUI.Library.Action;
 using Layout = MediaPortal.GUI.Library.GUIFacadeControl.Layout;
 
@@ -666,6 +667,48 @@ namespace TvPlugin
       }
     }
 
+    private static List<int> ListDisallowedChannelsById()
+    {
+      bool hidePinProtectedChannelsGroup = false;
+      bool hideAllChannelsGroup = false;
+
+      using (Settings xmlreader = new MPSettings())
+      {
+        hideAllChannelsGroup = xmlreader.GetValueAsBool("mytv", "hideAllChannelsGroup", false);
+        hidePinProtectedChannelsGroup = xmlreader.GetValueAsBool("mytv", "hidePinProtectedChannelsGroup", false);
+      }
+
+      IList<ChannelGroup> groups = ChannelGroup.ListAll();
+
+      List<int> disallowedGroups = new List<int>();
+
+      foreach (ChannelGroup group in groups)
+      {
+        if (hidePinProtectedChannelsGroup && !string.IsNullOrEmpty(group.PinCode)
+          || !string.IsNullOrEmpty(group.PinCode) && TVHome.Navigator.CurrentGroup.IdGroup != group.IdGroup)
+        {
+          disallowedGroups.Add(group.IdGroup);
+        }
+      }
+
+      List<Channel> channels = Channel.ListAll().ToList();
+      IList<GroupMap> allgroupMaps = GroupMap.ListAll();
+      List<int> disAllowedChannels = new List<int>();
+
+      foreach (Channel ch in channels)
+      {
+        foreach (GroupMap gm in allgroupMaps)
+        {
+          if (ch.IdChannel == gm.IdChannel && disallowedGroups.Contains(gm.IdGroup))
+          {
+            disAllowedChannels.Add(ch.IdChannel);
+            Log.Debug("TvRecorded: Disallowed Channel {0}", ch.DisplayName);
+          }
+        }
+      }
+      return disAllowedChannels;
+    }
+
     private void LoadDirectory()
     {
       var watch = new Stopwatch(); watch.Reset(); watch.Start();
@@ -674,6 +717,8 @@ namespace TvPlugin
       {
         GUIControl.ClearControl(GetID, facadeLayout.GetID);
 
+        List<int> disallowedChannels = ListDisallowedChannelsById();
+
         SwitchLayout();
 
         // lookup radio channel ID in radio group map (smallest table that could identify a radio channel) to remove radiochannels from recording list
@@ -681,8 +726,19 @@ namespace TvPlugin
         Log.Debug("LoadDirectory() - finished loading '" + radiogroupIDs.Count() + "' radiogroupIDs after '{0}' ms.", watch.ElapsedMilliseconds);
 
         //List<Recording> recordings = (from r in Recording.ListAll()where !(from rad in radiogroups select rad.IdChannel).Contains(r.IdChannel)select r).ToList();
-        List<Recording> recordings = Recording.ListAll().Where(rec => radiogroupIDs.All(id => rec.IdChannel != id)).ToList();
-        Log.Debug("LoadDirectory() - finished loading '" + recordings.Count + "' recordings after '{0}' ms.", watch.ElapsedMilliseconds);
+        List<Recording> allRecordings = Recording.ListAll().Where(rec => radiogroupIDs.All(id => rec.IdChannel != id)).ToList();
+        Log.Debug("LoadDirectory() - finished loading '" + allRecordings.Count + "' recordings after '{0}' ms.", watch.ElapsedMilliseconds);
+
+        List<Recording> recordings = new List<Recording>();
+
+        // skip recording if it was recorded from a disallowed (PIN protected) channel
+        foreach (Recording rec in allRecordings)
+        {
+          if (!disallowedChannels.Contains(rec.IdChannel))
+          {
+            recordings.Add(rec);
+          }
+        }
 
         // load the active channels only once to save multiple requests later when retrieving related channel
         List<Channel> channels = Channel.ListAll().ToList();
