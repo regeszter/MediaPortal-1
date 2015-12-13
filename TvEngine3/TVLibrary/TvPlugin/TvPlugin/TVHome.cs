@@ -27,6 +27,7 @@ using System.Collections.Specialized;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -407,6 +408,52 @@ namespace TvPlugin
       g_Player.AudioTracksReady -= new g_Player.AudioTracksReadyHandler(OnAudioTracksReady);
 
       GUIWindowManager.Receivers -= new SendMessageHandler(OnGlobalMessage);
+    }
+
+    /// <summary>
+    /// List channels wich are allowed to current user (the PIN protected channels filtered)
+    /// </summary>
+    /// <returns></returns>
+    public static List<int> ListDisallowedChannelsById()
+    {
+      bool hidePinProtectedChannelsGroup = false;
+      bool hideAllChannelsGroup = false;
+
+      using (Settings xmlreader = new MPSettings())
+      {
+        hideAllChannelsGroup = xmlreader.GetValueAsBool("mytv", "hideAllChannelsGroup", false);
+        hidePinProtectedChannelsGroup = xmlreader.GetValueAsBool("mytv", "hidePinProtectedChannelsGroup", false);
+      }
+
+      IList<ChannelGroup> groups = ChannelGroup.ListAll();
+
+      List<int> disallowedGroups = new List<int>();
+
+      foreach (ChannelGroup group in groups)
+      {
+        if (hidePinProtectedChannelsGroup && !string.IsNullOrEmpty(group.PinCode)
+          || !string.IsNullOrEmpty(group.PinCode) && TVHome.Navigator.CurrentGroup.IdGroup != group.IdGroup)
+        {
+          disallowedGroups.Add(group.IdGroup);
+        }
+      }
+
+      List<Channel> channels = Channel.ListAll().ToList();
+      IList<GroupMap> allgroupMaps = GroupMap.ListAll();
+      List<int> disAllowedChannels = new List<int>();
+
+      foreach (Channel ch in channels)
+      {
+        foreach (GroupMap gm in allgroupMaps)
+        {
+          if (ch.IdChannel == gm.IdChannel && disallowedGroups.Contains(gm.IdGroup))
+          {
+            disAllowedChannels.Add(ch.IdChannel);
+            Log.Debug("TvRecorded: Disallowed Channel {0}", ch.DisplayName);
+          }
+        }
+      }
+      return disAllowedChannels;
     }
 
     public override bool SupportsDelayedLoad
@@ -2246,12 +2293,13 @@ namespace TvPlugin
       dlg.Reset();
       dlg.SetHeading(200052); // Active Recordings      
 
+      List<int> disallowedChannels = ListDisallowedChannelsById();
       IList<Recording> activeRecordings = Recording.ListAllActive();
       if (activeRecordings != null && activeRecordings.Count > 0)
       {
         foreach (Recording activeRecording in activeRecordings)
         {
-          if (!ignoreActiveRecordings.Contains(activeRecording))
+          if (!ignoreActiveRecordings.Contains(activeRecording) && !disallowedChannels.Contains(activeRecording.IdChannel))
           {
             GUIListItem item = new GUIListItem();
             string channelName = activeRecording.ReferencedChannel().DisplayName;
