@@ -269,6 +269,12 @@ namespace TvPlugin
       g_Player.PlayBackStarted -= new g_Player.StartedHandler(OnPlayRecordingBackStarted);
       g_Player.PlayBackChanged -= new g_Player.ChangedHandler(OnPlayRecordingBackChanged);*/
 
+      // Reset disallowed recorded items only we didn't start or stop the video.
+      if (newWindowId != (int)Window.WINDOW_FULLSCREEN_VIDEO)
+      {
+        TVHome.LoadSettings(true);
+      }
+
       _iSelectedItem = GetSelectedItemNo();
       SaveSettings();
       base.OnPageDestroy(newWindowId);
@@ -684,19 +690,11 @@ namespace TvPlugin
         Log.Debug("LoadDirectory() - finished loading '" + radiogroupIDs.Count() + "' radiogroupIDs after '{0}' ms.", watch.ElapsedMilliseconds);
 
         //List<Recording> recordings = (from r in Recording.ListAll()where !(from rad in radiogroups select rad.IdChannel).Contains(r.IdChannel)select r).ToList();
-        List<Recording> allRecordings = Recording.ListAll().Where(rec => radiogroupIDs.All(id => rec.IdChannel != id)).ToList();
+        var allRecordings = Recording.ListAll().Where(rec => radiogroupIDs.All(id => rec.IdChannel != id)).ToList();
         Log.Debug("LoadDirectory() - finished loading '" + allRecordings.Count + "' recordings after '{0}' ms.", watch.ElapsedMilliseconds);
 
-        List<Recording> recordings = new List<Recording>();
-
         // skip recording if it was recorded from a disallowed (PIN protected) channel
-        foreach (Recording rec in allRecordings)
-        {
-          if (!disallowedChannels.Contains(rec.IdChannel))
-          {
-            recordings.Add(rec);
-          }
-        }
+        var recordings = allRecordings.Where(rec => !disallowedChannels.Contains(rec.IdChannel)).ToList();
 
         // load the active channels only once to save multiple requests later when retrieving related channel
         List<Channel> channels = Channel.ListAll().ToList();
@@ -793,8 +791,8 @@ namespace TvPlugin
             Utils.SetDefaultIcons(item);
             item.ThumbnailImage = item.IconImageBig;
             facadeLayout.Add(item);
-            
-            if (string.IsNullOrEmpty(item.Label)) 	
+
+            if (string.IsNullOrEmpty(item.Label))
             {
               item.Label = GUILocalizeStrings.Get(2014); //unknown
             }
@@ -805,7 +803,7 @@ namespace TvPlugin
           #region Showing a folders content
 
           // add parent item
-          var item = new GUIListItem("..") {IsFolder = true};
+          var item = new GUIListItem("..") { IsFolder = true };
           Utils.SetDefaultIcons(item);
           facadeLayout.Add(item);
 
@@ -866,7 +864,7 @@ namespace TvPlugin
       Log.Debug("LoadDirectory() - finished sorting facade after '{0}' ms.", watch.ElapsedMilliseconds);
 
       UpdateProperties();
-      UpdateThumbnails(); 
+      UpdateThumbnails();
     }
 
     public static string GetRecordingDisplayName(Recording rec)

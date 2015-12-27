@@ -427,16 +427,11 @@ namespace TvPlugin
 
       IList<ChannelGroup> groups = ChannelGroup.ListAll();
 
-      List<int> disallowedGroups = new List<int>();
-
-      foreach (ChannelGroup group in groups)
-      {
-        if (hidePinProtectedChannelsGroup && !string.IsNullOrEmpty(group.PinCode)
-          || !string.IsNullOrEmpty(group.PinCode) && TVHome.Navigator.CurrentGroup.IdGroup != group.IdGroup)
-        {
-          disallowedGroups.Add(group.IdGroup);
-        }
-      }
+      var disallowedGroups = (from @group in groups
+                              where
+                                hidePinProtectedChannelsGroup && !string.IsNullOrEmpty(@group.PinCode) ||
+                                !string.IsNullOrEmpty(@group.PinCode) && TVHome.Navigator.CurrentGroup.IdGroup != @group.IdGroup
+                              select @group.IdGroup).ToList();
 
       List<Channel> channels = Channel.ListAll().ToList();
       IList<GroupMap> allgroupMaps = GroupMap.ListAll();
@@ -2234,7 +2229,7 @@ namespace TvPlugin
 
     private void UpdateGUIonPlaybackStateChange(bool playbackStarted)
     {
-      if (btnTvOnOff.Selected != playbackStarted)
+      if (btnTvOnOff != null && btnTvOnOff.Selected != playbackStarted)
       {
         btnTvOnOff.Selected = playbackStarted;
       }
@@ -2242,14 +2237,14 @@ namespace TvPlugin
       UpdateProgressPercentageBar();
 
       bool hasTeletext = (!Connected || Card.HasTeletext) && (playbackStarted);
-      btnTeletext.IsVisible = hasTeletext;
+      if (btnTeletext != null) btnTeletext.IsVisible = hasTeletext;
     }
 
     private void UpdateGUIonPlaybackStateChange()
     {
       bool isTimeShiftingTV = (Connected && Card.IsTimeShifting && g_Player.IsTV);
 
-      if (btnTvOnOff.Selected != isTimeShiftingTV)
+      if (btnTvOnOff != null && btnTvOnOff.Selected != isTimeShiftingTV)
       {
         btnTvOnOff.Selected = isTimeShiftingTV;
       }
@@ -2257,7 +2252,7 @@ namespace TvPlugin
       UpdateProgressPercentageBar();
 
       bool hasTeletext = (!Connected || Card.HasTeletext) && (isTimeShiftingTV);
-      btnTeletext.IsVisible = hasTeletext;
+      if (btnTeletext != null) btnTeletext.IsVisible = hasTeletext;
     }
 
     private void UpdateCurrentChannel()
@@ -2291,41 +2286,56 @@ namespace TvPlugin
       }
 
       dlg.Reset();
-      dlg.SetHeading(200052); // Active Recordings      
+      dlg.SetHeading(200052); // Active Recordings
 
-      List<int> disallowedChannels = ListDisallowedChannelsById();
-      IList<Recording> activeRecordings = Recording.ListAllActive();
+      var disallowedChannels = ListDisallowedChannelsById();
+      var activeRecordings = Recording.ListAllActive();
       if (activeRecordings != null && activeRecordings.Count > 0)
       {
-        foreach (Recording activeRecording in activeRecordings)
+        int addedItems = 0;
+        foreach (var activeRecording in activeRecordings)
         {
-          if (!ignoreActiveRecordings.Contains(activeRecording) && !disallowedChannels.Contains(activeRecording.IdChannel))
+          if (ignoreActiveRecordings.Contains(activeRecording) || disallowedChannels.Contains(activeRecording.IdChannel))
           {
-            GUIListItem item = new GUIListItem();
-            string channelName = activeRecording.ReferencedChannel().DisplayName;
-            string programTitle = activeRecording.Title.Trim(); // default is current EPG info
-
-            item.Label = channelName;
-            item.Label2 = programTitle;
-
-            string strLogo = Utils.GetCoverArt(Thumbs.TVChannel, channelName);
-            if (string.IsNullOrEmpty(strLogo))
-            {
-              strLogo = "defaultVideoBig.png";
-            }
-
-            item.IconImage = strLogo;
-            item.IconImageBig = strLogo;
-            item.PinImage = "";
-            dlg.Add(item);
+            continue;
           }
+          GUIListItem item = new GUIListItem();
+          string channelName = activeRecording.ReferencedChannel().DisplayName;
+          string programTitle = activeRecording.Title.Trim(); // default is current EPG info
+
+          item.Label = channelName;
+          item.Label2 = programTitle;
+
+          string strLogo = Utils.GetCoverArt(Thumbs.TVChannel, channelName);
+          if (string.IsNullOrEmpty(strLogo))
+          {
+            strLogo = "defaultVideoBig.png";
+          }
+
+          item.IconImage = strLogo;
+          item.IconImageBig = strLogo;
+          item.PinImage = "";
+          dlg.Add(item);
+          addedItems++;
         }
 
-        dlg.SelectedLabel = activeRecordings.Count;
+        if (addedItems > 0)
+        {
+          dlg.SelectedLabel = activeRecordings.Count;
+        }
 
         dlg.DoModal(this.GetID);
-        if (dlg.SelectedLabel < 0)
+        activeRecordings = activeRecordings.Where(stream => !disallowedChannels.Contains(stream.IdChannel)).ToList();
+        if (activeRecordings.Count == 0)
         {
+          GUIDialogOK pDlgOK = (GUIDialogOK)GUIWindowManager.GetWindow((int)Window.WINDOW_DIALOG_OK);
+          if (pDlgOK != null)
+          {
+            pDlgOK.SetHeading(200052); //my tv
+            pDlgOK.SetLine(1, GUILocalizeStrings.Get(200053)); // No Active recordings
+            pDlgOK.SetLine(2, "");
+            pDlgOK.DoModal(this.GetID);
+          }
           return;
         }
 
@@ -2341,16 +2351,15 @@ namespace TvPlugin
           return;
         }
         bool deleted = TVUtil.StopRecAndSchedWithPrompt(parentSchedule, selectedRecording.IdChannel);
-        
         if (deleted && !ignoreActiveRecordings.Contains(selectedRecording))
         {
           ignoreActiveRecordings.Add(selectedRecording);
 
-        /*  if (DebugSettings.EnableRecordingFromTimeshift)
-          {
-            Log.Debug("MergeTSbufferToRecordedFile: {0}", selectedRecording.FileName);
-            RemoteControl.Instance.MergeTSbufferToRecordedFile(selectedRecording.FileName);
-          } regeszter */
+          /*  if (DebugSettings.EnableRecordingFromTimeshift)
+            {
+              Log.Debug("MergeTSbufferToRecordedFile: {0}", selectedRecording.FileName);
+              RemoteControl.Instance.MergeTSbufferToRecordedFile(selectedRecording.FileName);
+            } regeszter */
         }
         OnActiveRecordings(ignoreActiveRecordings); //keep on showing the list until --> 1) user leaves menu, 2) no more active recordings
       }
@@ -2387,10 +2396,7 @@ namespace TvPlugin
         {
           return true;
         }
-        else
-        {
-          return false;
-        }
+        return false;
       }
     }
 
@@ -2410,6 +2416,10 @@ namespace TvPlugin
       int count = 0;
       TvServer server = new TvServer();
       List<IUser> _users = new List<IUser>();
+
+      // Display only protected stream if we are in a protected group
+      List<int> disallowedChannels = TVHome.ListDisallowedChannelsById();
+
       foreach (Card card in cards)
       {
         if (card.Enabled == false)
@@ -2421,58 +2431,51 @@ namespace TvPlugin
           continue;
         }
         IUser[] users = RemoteControl.Instance.GetUsersForCard(card.IdCard);
-
         if (users == null)
         {
           return;
         }
-        for (int i = 0; i < users.Length; ++i)
+        foreach (var t in users.ToList())
         {
-          IUser user = users[i];
+          var user = t;
           Log.Debug("rtsp url: {0}, {1}", user, RemoteControl.Instance.GetStreamingUrl(user));
-          
           if (card.IdCard != user.CardId)
           {
             continue;
           }
-          bool isRecording;
-          bool isTimeShifting;
           VirtualCard tvcard = new VirtualCard(user, RemoteControl.HostName);
-          isRecording = tvcard.IsRecording;
-          isTimeShifting = tvcard.IsTimeShifting;
-          if (isTimeShifting || (isRecording && !isTimeShifting))
+          var isRecording = tvcard.IsRecording;
+          var isTimeShifting = tvcard.IsTimeShifting;
+          if (isTimeShifting || (isRecording))
           {
             int idChannel = tvcard.IdChannel;
             user = tvcard.User;
             Channel ch = Channel.Retrieve(idChannel);
-            channels.Add(ch);
-            GUIListItem item = new GUIListItem();
-            item.Label = ch.DisplayName;
-            item.Label2 = user.Name;
-            string strLogo = Utils.GetCoverArt(Thumbs.TVChannel, ch.DisplayName);
-            if (string.IsNullOrEmpty(strLogo))
+            if (!disallowedChannels.Contains(ch.IdChannel))
             {
-              strLogo = "defaultVideoBig.png";
+              channels.Add(ch);
+              GUIListItem item = new GUIListItem();
+              item.Label = ch.DisplayName;
+              item.Label2 = user.Name;
+              string strLogo = Utils.GetCoverArt(Thumbs.TVChannel, ch.DisplayName);
+              if (string.IsNullOrEmpty(strLogo))
+              {
+                strLogo = "defaultVideoBig.png";
+              }
+              item.IconImage = strLogo;
+              item.PinImage = isRecording ? Thumbs.TvRecordingIcon : "";
+              dlg.Add(item);
+              _users.Add(user);
+              if (Card != null && Card.IdChannel == idChannel)
+              {
+                selected = count;
+              }
+              count++;
             }
-            item.IconImage = strLogo;
-            if (isRecording)
-            {
-              item.PinImage = Thumbs.TvRecordingIcon;
-            }
-            else
-            {
-              item.PinImage = "";
-            }
-            dlg.Add(item);
-            _users.Add(user);
-            if (Card != null && Card.IdChannel == idChannel)
-            {
-              selected = count;
-            }
-            count++;
           }
         }
       }
+
       if (channels.Count == 0)
       {
         GUIDialogOK pDlgOK = (GUIDialogOK)GUIWindowManager.GetWindow((int)Window.WINDOW_DIALOG_OK);
@@ -2489,7 +2492,6 @@ namespace TvPlugin
       dlg.DoModal(this.GetID);
       if (dlg.SelectedLabel < 0)
       {
- 
         return;
       }
 
@@ -2498,14 +2500,14 @@ namespace TvPlugin
       Channel channel = Navigator.GetChannel(vCard.IdChannel);
       User myUser = new User();
 
-      /// Connect to the virtual user and play
+      // Connect to the virtual user and play
       if (_users[dlg.SelectedLabel].Name.Contains("Placeshift Virtual User") || _users[dlg.SelectedLabel].Name == "aMPdroid")
       {
         if (inPlaceShift)
         {
           vPlaceshiftCard.StopTimeShifting();
         }
-        else if (Card.IsTimeShifting)
+        else if (Card != null && Card.IsTimeShifting)
         {
           Card.StopTimeShifting();
         }
@@ -2530,7 +2532,7 @@ namespace TvPlugin
         Navigator.setChannel(channel);
         UpdateCurrentChannel();
 
-        Log.Debug("placeshift selected active rtspUrl: {0} for channel: {1}, user: {2}, vCard.Id: {3}, TimeshiftPosition: {4}", 
+        Log.Debug("placeshift selected active rtspUrl: {0} for channel: {1}, user: {2}, vCard.Id: {3}, TimeshiftPosition: {4}",
           selectedUrl, channel.DisplayName, _users[dlg.SelectedLabel].Name, vCard.Id, TimeshiftPosition);
 
         // Setup vPlaceshiftCard for stoptimeshift
@@ -2540,13 +2542,16 @@ namespace TvPlugin
       }
       else
       {
-        if (myUser.Name != _users[dlg.SelectedLabel].Name && OnShareTsBuffer())
+        VirtualCard tvcard = new VirtualCard(_users[dlg.SelectedLabel], RemoteControl.HostName);
+        var isRecording = tvcard.IsRecording;
+
+        if (myUser.Name != _users[dlg.SelectedLabel].Name && !isRecording && OnShareTsBuffer())
         {
           if (inPlaceShift)
           {
             vPlaceshiftCard.StopTimeShifting();
           }
-          else if (Card.IsTimeShifting)
+          else if (Card != null && Card.IsTimeShifting)
           {
             Card.StopTimeShifting();
           }
@@ -2562,7 +2567,7 @@ namespace TvPlugin
         }
         else
         {
-         ViewChannel(channel);
+          ViewChannel(channel);
         }
       }
     }
