@@ -553,7 +553,13 @@ namespace TvPlugin
       }
       else
       {
-        LoadSettings(true); // needs for PIN protection function avoid to start tvhome with a protected group
+         // needs for PIN protection function avoid to start tvhome with a protected group
+        var previousWindowId = GUIWindowManager.GetWindow(GUIWindowManager.ActiveWindow).PreviousWindowId;
+        if (previousWindowId == (int)Window.WINDOW_HOME ||
+            previousWindowId == (int)Window.WINDOW_SECOND_HOME)
+        {
+          LoadSettings(true);
+        }
       }
 
       if (m_navigator == null)

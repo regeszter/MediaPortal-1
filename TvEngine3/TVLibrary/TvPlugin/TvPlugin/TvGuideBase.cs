@@ -583,6 +583,11 @@ namespace TvPlugin
         case Action.ActionType.ACTION_TVGUIDE_PREV_GROUP:
           OnChangeChannelGroup(-1);
           break;
+
+        case Action.ActionType.ACTION_SWITCH_HOME:
+          // needs for PIN protection function avoid to start tvhome with a protected group
+          TVHome.LoadSettings(true);
+          return;
       }
       base.OnAction(action);
     }
