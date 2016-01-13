@@ -949,14 +949,14 @@ namespace TvEngine.PowerScheduler
 
       try
       {
-        Log.Debug("PS: Stop and remove the StandbyWakeupThread.");
+        /*Log.Debug("PS: Stop and remove the StandbyWakeupThread.");
         // Stop and remove the StandbyWakeupThread
         if (_standbyWakeupThread != null)
         {
-          _standbyWakeupThread.Abort();
+          _standbyWakeupThread. Abort();
           _standbyWakeupThread.Join(100);
           _standbyWakeupThread = null;
-        }
+        }*/
         Log.Debug("PS: Remove the EventWaitHandles.");
         // Remove the EventWaitHandles
         if (_standbyWakeupTriggered != null)
