@@ -949,6 +949,7 @@ namespace TvEngine.PowerScheduler
 
       try
       {
+        Log.Debug("PS: Stop and remove the StandbyWakeupThread.");
         // Stop and remove the StandbyWakeupThread
         if (_standbyWakeupThread != null)
         {
@@ -956,7 +957,7 @@ namespace TvEngine.PowerScheduler
           _standbyWakeupThread.Join(100);
           _standbyWakeupThread = null;
         }
-
+        Log.Debug("PS: Remove the EventWaitHandles.");
         // Remove the EventWaitHandles
         if (_standbyWakeupTriggered != null)
         {
@@ -978,10 +979,10 @@ namespace TvEngine.PowerScheduler
           _standbyWakeupFinished.Close();
           _standbyWakeupFinished = null;
         }
-
+        Log.Debug("PS: Unregister power event handler.");
         // Unregister power event handler
         UnRegisterPowerEventHandler();
-
+        Log.Debug("PS: Remove the standby/resume handlers.");
         // Remove the standby/resume handlers
         if (_factory != null)
         {
