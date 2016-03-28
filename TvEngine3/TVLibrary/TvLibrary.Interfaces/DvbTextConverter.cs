@@ -175,6 +175,12 @@ namespace TvLibrary.Interfaces
       {
         text[i] = Marshal.ReadByte(ptr, i + pos);
       }
+
+      if (lang == "hun" && encoding == 1250)
+      {
+        return Iso6937ToUnicodeV2.Convert(ptr);
+      }
+
       return Encoding.GetEncoding(encoding).GetString(text);
     }
   }
