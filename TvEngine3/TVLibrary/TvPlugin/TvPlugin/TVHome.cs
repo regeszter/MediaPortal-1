@@ -2519,7 +2519,8 @@ namespace TvPlugin
       User myUser = new User();
 
       // Connect to the virtual user and play
-      if (_users[dlg.SelectedLabel].Name.Contains("Placeshift Virtual User") || _users[dlg.SelectedLabel].Name == "aMPdroid")
+      if (_users[dlg.SelectedLabel].Name.Contains("Placeshift Virtual User") || _users[dlg.SelectedLabel].Name == "aMPdroid"
+         || _users[dlg.SelectedLabel].Name.Contains("MPTvScheduler"))
       {
         if (inPlaceShift)
         {
