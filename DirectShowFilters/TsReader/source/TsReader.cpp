@@ -1884,7 +1884,12 @@ void CTsReaderFilter::ThreadProc()
           if(durationUpdateLoop == 0)
           {
           	Old_rtspDuration = m_rtspClient.Duration();
-            m_rtspClient.UpdateDuration();
+						if (!m_rtspClient.UpdateDuration())
+						{
+							LogDebug("UpdateStreamDuration: Failed to get a SDP description from URL. The stream is aborted. Stopping itself.");
+							SetErrorAbort();
+							return;
+						}
           }
     	
           CPcr pcrStart, pcrEnd, pcrMax ;
