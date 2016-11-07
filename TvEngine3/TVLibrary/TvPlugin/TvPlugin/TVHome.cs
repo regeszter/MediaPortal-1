@@ -130,7 +130,6 @@ namespace TvPlugin
     private static bool _doingChannelChange = false;
     private static bool _ServerNotConnectedHandled = false;
     private static bool _recoverTV = false;
-    private static bool _connected = false;
     private static bool _isAnyCardRecording = false;
     protected static TvServer _server;
     public static bool firstNotLoaded = true;
@@ -141,24 +140,15 @@ namespace TvPlugin
     private static int FramesBeforeStopRenderBlackImage = 0;
     private static BitHelper<LiveTvStatus> _status = new BitHelper<LiveTvStatus>();
 
-    [SkinControl(2)]
-    protected GUIButtonControl btnTvGuide = null;
-    [SkinControl(3)]
-    protected GUIButtonControl btnRecord = null;
-    [SkinControl(7)]
-    protected GUIButtonControl btnChannel = null;
-    [SkinControl(8)]
-    protected GUICheckButton btnTvOnOff = null;
-    [SkinControl(13)]
-    protected GUIButtonControl btnTeletext = null;
-    [SkinControl(24)]
-    protected GUIImage imgRecordingIcon = null;
-    [SkinControl(99)]
-    protected GUIVideoControl videoWindow = null;
-    [SkinControl(9)]
-    protected GUIButtonControl btnActiveStreams = null;
-    [SkinControl(14)]
-    protected GUIButtonControl btnActiveRecordings = null;
+    [SkinControl(2)] private GUIButtonControl btnTvGuide = null;
+    [SkinControl(3)] private GUIButtonControl btnRecord = null;
+    [SkinControl(7)] private GUIButtonControl btnChannel = null;
+    [SkinControl(8)] private GUICheckButton btnTvOnOff = null;
+    [SkinControl(13)] private GUIButtonControl btnTeletext = null;
+    [SkinControl(24)] private GUIImage imgRecordingIcon = null;
+    [SkinControl(99)] private GUIVideoControl videoWindow = null;
+    [SkinControl(9)] private GUIButtonControl btnActiveStreams = null;
+    [SkinControl(14)] private GUIButtonControl btnActiveRecordings = null;
 
     // error handling
     public class ChannelErrorInfo
@@ -316,15 +306,13 @@ namespace TvPlugin
       {
         _notifyManager.Start();
       }
-
     }
 
     public override void OnAdded()
     {
       Log.Info("TVHome:OnAdded");
-      RemoteControl.OnRemotingDisconnected +=
-        new RemoteControl.RemotingDisconnectedDelegate(RemoteControl_OnRemotingDisconnected);
-      RemoteControl.OnRemotingConnected += new RemoteControl.RemotingConnectedDelegate(RemoteControl_OnRemotingConnected);
+      RemoteControl.OnRemotingDisconnected += RemoteControl_OnRemotingDisconnected;
+      RemoteControl.OnRemotingConnected += RemoteControl_OnRemotingConnected;
 
       GUIGraphicsContext.OnBlackImageRendered += new BlackImageRenderedHandler(OnBlackImageRendered);
       GUIGraphicsContext.OnVideoReceived += new VideoReceivedHandler(OnVideoReceived);
@@ -394,9 +382,8 @@ namespace TvPlugin
     {
       OnPageDestroy(-1);
 
-      RemoteControl.OnRemotingDisconnected -=
-       new RemoteControl.RemotingDisconnectedDelegate(RemoteControl_OnRemotingDisconnected);
-      RemoteControl.OnRemotingConnected -= new RemoteControl.RemotingConnectedDelegate(RemoteControl_OnRemotingConnected);
+      RemoteControl.OnRemotingDisconnected -= RemoteControl_OnRemotingDisconnected;
+      RemoteControl.OnRemotingConnected -= RemoteControl_OnRemotingConnected;
 
       GUIGraphicsContext.OnBlackImageRendered -= new BlackImageRenderedHandler(OnBlackImageRendered);
       GUIGraphicsContext.OnVideoReceived -= new VideoReceivedHandler(OnVideoReceived);
@@ -598,7 +585,9 @@ namespace TvPlugin
 
       if (channel != null)
       {
-        Log.Info("tv home init: ch {0}, gr {1}", channel.DisplayName, Navigator.CurrentGroup.GroupName);
+        if (Navigator.CurrentGroup != null)
+        {
+          Log.Info("tv home init: ch {0}, gr {1}", channel.DisplayName, Navigator.CurrentGroup.GroupName);
         if (!_suspended)
         {
           AutoTurnOnTv(channel);
@@ -608,6 +597,7 @@ namespace TvPlugin
           _resumeChannel = channel;
         }
         GUIPropertyManager.SetProperty("#TV.Guide.Group", Navigator.CurrentGroup.GroupName);
+        }
         Log.Info("tv home init:{0} done", channel.DisplayName);
       }
 
@@ -625,7 +615,7 @@ namespace TvPlugin
 
     private void AutoTurnOnTv(Channel channel)
     {
-      if (_autoTurnOnTv && !_playbackStopped && !wasPrevWinTVplugin())
+      if (_autoTurnOnTv && !_playbackStopped)
       {
         if (!wasPrevWinTVplugin())
         {
@@ -855,7 +845,6 @@ namespace TvPlugin
       }
     }
     
-
     public override bool IsTv
     {
       get { return true; }
@@ -1176,11 +1165,7 @@ namespace TvPlugin
       get { return _isAnyCardRecording; }
     }
 
-    public static bool Connected
-    {
-      get { return _connected; }
-      set { _connected = value; }
-    }
+    public static bool Connected { get; set; }
 
     public static VirtualCard Card
     {
@@ -1498,7 +1483,6 @@ namespace TvPlugin
         // HeartBeat loop (5 seconds)
         if (countToHBLoop >= 5)
         {
-          
           countToHBLoop = 0;
           if (!Connected) // is this needed to update connection status
             RefreshConnectionState();
@@ -1874,9 +1858,9 @@ namespace TvPlugin
           case PBT_APMQUERYSUSPEND:
           case PBT_APMQUERYSTANDBY:
             Log.Info("TVHome.WndProc(): Windows is going into powerstate (hibernation/standby)");
-
             break;
           case PBT_APMRESUMESUSPEND:
+          case PBT_APMRESUMEAUTOMATIC:
             Log.Info("TVHome.WndProc(): Windows has resumed from hibernate mode");
             OnResume();
             break;
@@ -2155,7 +2139,6 @@ namespace TvPlugin
       }
 
       Log.Info("TVHome:Record action");
-
       var server = new TvServer();
 
       VirtualCard card = null;
@@ -2183,7 +2166,12 @@ namespace TvPlugin
             pDlgOK.Reset();
             pDlgOK.SetHeading(605); //my tv
             pDlgOK.AddLocalizedString(875); //current program
-            pDlgOK.AddLocalizedString(876); //till manual stop
+
+            bool doesManuelScheduleAlreadyExist = DoesManualScheduleAlreadyExist(channel);
+            if (!doesManuelScheduleAlreadyExist)
+            {
+              pDlgOK.AddLocalizedString(876); //till manual stop
+            }
             pDlgOK.DoModal(GUIWindowManager.ActiveWindow);
             switch (pDlgOK.SelectedId)
             {
@@ -2196,14 +2184,9 @@ namespace TvPlugin
 
               case 876:
                 //manual
-                bool doesManuelScheduleAlreadyExist = DoesManualScheduleAlreadyExist(channel);
-                if (!doesManuelScheduleAlreadyExist)
-                {
-                  StartRecordingSchedule(channel, true);
-                  return true;
-                }
-                break;
-            }
+                StartRecordingSchedule(channel, true);
+                return true;
+             }
           }
         }
         else
@@ -2260,6 +2243,11 @@ namespace TvPlugin
 
     private void UpdateGUIonPlaybackStateChange()
     {
+      if (!Connected)
+      {
+        return;
+      }
+
       bool isTimeShiftingTV = (Connected && Card.IsTimeShifting && g_Player.IsTV);
 
       if (btnTvOnOff != null && btnTvOnOff.Selected != isTimeShiftingTV)
@@ -2819,6 +2807,7 @@ namespace TvPlugin
 
     private static void UpdateCurrentEpgProperties(Channel ch)
     {
+
       bool hasChannel = (ch != null);
       Program current = null;
       if (hasChannel)
@@ -2856,6 +2845,8 @@ namespace TvPlugin
         GUIPropertyManager.SetProperty("#TV.View.episode", current.EpisodeNumber);
         GUIPropertyManager.SetProperty("#TV.View.genre", current.Genre);
         GUIPropertyManager.SetProperty("#TV.View.remaining",Utils.SecondsToHMSString(current.CalculateTimeRemaining()));
+        GUIPropertyManager.SetProperty("#TV.View.remainingSeconds", Utils.SecondsToHMSStringSeconds(current.CalculateTimeRemaining()));
+        GUIPropertyManager.SetProperty("#TV.View.remainingMinutes", Utils.SecondsToHMSStringMinutes(current.CalculateTimeRemaining()));
         SetTvThumbProperty(ch);
 
         TimeSpan ts = current.EndTime - current.StartTime;
@@ -2889,8 +2880,6 @@ namespace TvPlugin
           percentLivePoint *= 100.0d;
           GUIPropertyManager.SetProperty("#TV.View.Percentage", percentLivePoint.ToString());
           GUIPropertyManager.SetProperty("#TV.Record.percent3", percentLivePoint.ToString());
-
-          //ide
         }
       }
 
@@ -2922,6 +2911,8 @@ namespace TvPlugin
       GUIPropertyManager.SetProperty("#TV.Record.percent2", "0");
       GUIPropertyManager.SetProperty("#TV.Record.percent3", "0");
       GUIPropertyManager.SetProperty("#TV.View.remaining", String.Empty);
+      GUIPropertyManager.SetProperty("#TV.View.remainingSeconds", string.Empty);
+      GUIPropertyManager.SetProperty("#TV.View.remainingMinutes", string.Empty);
     }
 
     private static void UpdateNextEpgProperties(Channel ch)
@@ -3466,7 +3457,7 @@ namespace TvPlugin
     {
       if (GUIGraphicsContext.RenderBlackImage)
       {
-        //MediaPortal.GUI.Library.Log.Debug("TvHome.OnBlackImageRendered()");
+        //Log.Debug("TvHome.OnBlackImageRendered()");
         _waitForBlackScreen.Set();
       }
     }
@@ -3501,7 +3492,7 @@ namespace TvPlugin
 
     private static void RenderBlackImage()
     {
-      if (GUIGraphicsContext.RenderBlackImage == false)
+      if (!GUIGraphicsContext.RenderBlackImage)
       {
         Log.Debug("TvHome.RenderBlackImage()");
         _waitForBlackScreen.Reset();
@@ -3672,7 +3663,10 @@ namespace TvPlugin
         }
         if (_status.IsSet(LiveTvStatus.WasPlaying))
         {
+          if (GUIGraphicsContext.VideoRenderer != GUIGraphicsContext.VideoRendererType.madVR)
+          {
           RenderBlackImage();
+          }
           g_Player.PauseGraph();
         }
         else
@@ -3740,7 +3734,10 @@ namespace TvPlugin
           Navigator.LastViewedChannel = Navigator.Channel;
         }
         Log.Info("succeeded:{0} {1}", succeeded, card);
+        if (card != null)
+        {
         Card = card; //Moved by joboehl - Only touch the card if starttimeshifting succeeded. 
+        }
 
         // if needed seek to end
         if (_status.IsSet(LiveTvStatus.SeekToEnd))

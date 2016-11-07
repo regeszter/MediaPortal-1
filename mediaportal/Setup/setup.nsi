@@ -584,7 +584,7 @@ Section "MediaPortal core files (required)" SecCore
   File "${git_ROOT}\Packages\bass.dsd.0.0.1\bassdsd.dll"
   ; taglib-sharp
   SetOutPath "$MPdir.Base\"
-  File "${git_ROOT}\Packages\MediaPortal.TagLib.2.1.0.1\lib\net40\taglib-sharp.dll"
+  File "${git_ROOT}\Packages\MediaPortal.TagLib.2.1.0.2\lib\net40\taglib-sharp.dll"
   ; SharpLibHid
   SetOutPath "$MPdir.Base\"
   File "${git_ROOT}\Packages\SharpLibHid.1.3.1\lib\net20\SharpLibHid.dll"
@@ -605,11 +605,17 @@ Section "MediaPortal core files (required)" SecCore
   !else
     File /oname=bluray.dll "${git_DirectShowFilters}\bin_Win32\libbluray\libbluray.dll"
   !endif
+  File /oname=libbluray.jar "${git_Libbluray}\src\.libs\libbluray-.jar"
+  CopyFiles /SILENT "$MPdir.Base\libbluray.jar" "$MPdir.Base\libbluray-j2se-0.6.2.jar"
   ; TvLibrary for Genre
   File "${git_TVServer}\TvLibrary.Interfaces\bin\${BUILD_TYPE}\TvLibrary.Interfaces.dll"
   File "${git_MP}\LastFMLibrary\bin\${BUILD_TYPE}\LastFMLibrary.dll"
   ; MediaPortal.exe
   
+  ; libbluray
+  ;SetOutPath "$MPdir.Base\lib"
+  ;File /nonfatal /r /x .git "${MEDIAPORTAL.BASE}\lib\*"
+
   #---------------------------------------------------------------------------
   # FILTER REGISTRATION
   #               for more information see:           http://nsis.sourceforge.net/Docs/AppendixB.html
@@ -693,6 +699,11 @@ SectionEnd
 		Delete  "$MPdir.Base\mpaudiorenderer.ax"
 	${EndIf}
   ${EndIf}
+  ; Delete filter to be able to be registered with an updated version
+  Delete  "$MPdir.Base\TsReader.ax"
+  Delete  "$MPdir.Base\cccp.ax"
+  Delete  "$MPdir.Base\DVBSub3.ax"
+  Delete  "$MPdir.Base\BDReader.ax"
 
 ### AUTO-GENERATED   UNINSTALLATION CODE ###
   !include "${git_MP}\Setup\uninstall.nsh"
@@ -797,6 +808,8 @@ SectionEnd
   RMDir /r "$MPdir.Base\Wizards"
   ; Log
   Delete "$MPdir.Base\log4net.dll"
+  Delete "$MPdir.Base\TsReader.ax"
+  Delete "$MPdir.Base\cccp.ax"
   
 !macroend
 
